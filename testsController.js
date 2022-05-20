@@ -259,6 +259,7 @@ class testsController {
                 TestResults: testResultsArr,
                 TestResultsChecked: testResultsCheckedArr,
                 answerCorrectnessArr: answerCorrectnessArr,
+                creator: activeTest.creator,
                 passedAt: "1",
             })
             await testResult.save()
@@ -278,7 +279,7 @@ class testsController {
             }
             const decodedData = jwt.verify(token, secret)
             if (!decodedData) return res.status(403).json({ message: "Користувач не авторизований." })
-            const testResults = await TestResult.find({ user: decodedData.id })
+            const testResults = await TestResult.find({ creator: decodedData.id })
             res.json(testResults)
         } catch (e) {
             console.log(e)

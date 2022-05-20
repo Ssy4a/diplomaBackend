@@ -1,6 +1,7 @@
 const { Schema, model } = require("mongoose")
 
 const TestResult = new Schema({
+    creator: { type: Schema.Types.ObjectId, ref: "User" },
     answers: [[{ type: Boolean, required: true }]],
     user: { type: Schema.Types.ObjectId, ref: "User" },
     username: { type: String, required: true },
