@@ -50,22 +50,22 @@ class authController {
             const token = generateAccessToken(user._id, user.roles)
             return res.json({ token, userId: user._id })
         } catch (e) {
-            res.status(401).json({ message: "Login error" })
+            res.status(401).json({ message: "Помилка авторизації" })
         }
     }
     async refresh(req, res) {
         try {
             const token = req.headers.authorization.split(" ")[1]
             if (!token) {
-                return res.status(403).json({ message: "Invalid authentification" })
+                return res.status(403).json({ message: "Помилка автентифікації" })
             }
             const decodedData = jwt.verify(token, secret)
             if (!decodedData) {
-                return res.status(403).json({ message: "Invalid authentification" })
+                return res.status(403).json({ message: "Помилка автентифікації" })
             }
-            else res.json("Authentification is successfull")
+            else res.json("Автентифікація успішна")
         } catch (e) {
-            res.status(403).json({ message: "Invalid authentification" })
+            res.status(403).json({ message: "Помилка автентифікації" })
         }
     }
     async getUserInfo(req, res) {
@@ -74,11 +74,42 @@ class authController {
             const decodedData = jwt.verify(token, secret)
             const user = await User.findOne({ _id: decodedData.id })
             if (!decodedData) {
-                return res.status(403).json({ message: "Invalid authentification" })
+                return res.status(403).json({ message: "Помилка автентифікації" })
             }
             else res.json(user)
         } catch (e) {
-            res.status(401).json({ message: "Користувач не аутентифікований." })
+            res.status(401).json({ message: "Користувач не автентифікований." })
+        }
+    }
+    async changeInfo(req, res) {
+        try {
+            const { name, username } = await req.body
+            await User.updateOne({ _id: req.user.id }, {
+                username: username,
+                name: name,
+            })
+            res.json({ name, username })
+        } catch (e) {
+            console.log(e)
+            res.status(401).json({ message: "Користувач не автентифікований." })
+        }
+    }
+    async changePassword(req, res) {
+        try {
+            const { password_old, password } = await req.body
+            const user = await User.findOne({ _id: req.user.id })
+            const validPassword = bcrypt.compareSync(password_old, user.password)
+            if (!validPassword) {
+                return res.status(401).json({ message: "Невірний старий пароль." })
+            }
+            const hashPassword = bcrypt.hashSync(password, 7);
+            await User.updateOne({ _id: req.user.id }, {
+                password: hashPassword
+            })
+            res.json("Пароль змінено успішно")
+        } catch (e) {
+            console.log(e)
+            res.status(401).json({ message: "Користувач не автентифікований." })
         }
     }
 }

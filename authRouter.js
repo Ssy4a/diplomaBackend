@@ -3,7 +3,6 @@ const router = new Router()
 const controller = require('./authController')
 const { check } = require("express-validator")
 const authMiddleware = require("./middleware/authMiddleware")
-const roleMiddleware = require("./middleware/roleMiddleware")
 
 
 
@@ -14,5 +13,7 @@ router.post('/registration', [
 router.post('/login', controller.login)
 router.get('/userInfo', controller.getUserInfo)
 router.get('/refresh', controller.refresh)
+router.patch('/userInfo', authMiddleware, controller.changeInfo)
+router.patch('/password', authMiddleware, controller.changePassword)
 
 module.exports = router

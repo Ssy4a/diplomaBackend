@@ -1,31 +1,24 @@
 const ActiveTest = require("./models/ActiveTest")
 const User = require("./models/User")
 const Test = require("./models/Test")
-const jwt = require("jsonwebtoken")
-const { secret } = require("./config")
 const TestResult = require("./models/TestResult")
 
 class testsController {
 
     async postTest(req, res) {
         try {
-            const token = req.headers.authorization.split(" ")[1]
-            if (!token) {
-                return res.status(403).json({ message: "Користувач не авторизований" })
-            }
-            const decodedData = jwt.verify(token, secret)
             const { name, description, testItems } = await req.body
             const test = await new Test({
                 name,
                 description,
                 testItems: testItems,
                 updatedAt: "1",
-                creator: decodedData.id,
+                creator: req.user.id,
                 isActive: false,
                 testResults: []
             })
             await test.save()
-            const newTestUser = await User.findOne({ _id: decodedData.id })
+            const newTestUser = await User.findOne({ _id: req.user.id })
             await newTestUser.updateOne({ $push: { tests: test } })
             res.json(test._id)
         } catch (e) {
@@ -41,19 +34,14 @@ class testsController {
             await res.json(selectedTest)
         } catch (e) {
             console.log(e)
-            res.status(400).json({ message: "Ошибка отримання тесту" })
+            res.status(400).json({ message: "Помилка отримання тесту" })
         }
     }
     async deleteTest(req, res) {
         try {
-            const token = req.headers.authorization.split(" ")[1]
-            if (!token) {
-                return res.status(403).json({ message: "Користувач не авторизований" })
-            }
-            const decodedData = jwt.verify(token, secret)
             const { testId } = req.body
             await Test.deleteOne({ _id: testId })
-            const user = await User.findOne({ _id: decodedData.id })
+            const user = await User.findOne({ _id: req.user.id })
             await user.updateOne({ $pull: { tests: testId } })
             await res.json("Тест видалений успішно")
         } catch (e) {
@@ -104,36 +92,17 @@ class testsController {
     }
     async patchTest(req, res) {
         try {
-            const token = req.headers.authorization.split(" ")[1]
-            if (!token) {
-                return res.status(403).json({ message: "Користувач не авторизований." })
-            }
-            const decodedData = jwt.verify(token, secret)
             const { testToEditId, newTest } = await req.body
             const testToEdit = Test.findOne({ _id: testToEditId })
             await Test.updateOne({ _id: testToEditId }, {
                 name: newTest.name,
                 description: newTest.description,
                 testItems: newTest.testItems,
-                creator: decodedData.id,
+                creator: req.user.id,
                 updatedAt: "1",
                 isActive: false,
                 testResults: testToEdit.testResults
             })
-            /*            const test = await new Test({
-                            name: newTest.name,
-                            description: newTest.description,
-                            testItems: newTest.testItems,
-                            creator: decodedData.id,
-                            updatedAt: "1",
-                            isActive: false,
-                            testResults: testToEdit.testResults
-                        }) 
-                        await test.save()*/
-            const newTestUser = await User.findOne({ _id: decodedData.id })
-            //await newTestUser.updateOne({ $pull: { tests: testToEditId } })
-            //await newTestUser.updateOne({ $push: { tests: test } })
-            //await Test.deleteOne({ _id: testToEditId })
             res.json("Тест успішно редаговано")
         } catch (e) {
             console.log(e)
@@ -142,14 +111,8 @@ class testsController {
     }
     async getActiveTest(req, res) {
         try {
-            const token = req.headers.authorization.split(" ")[1]
-            if (!token) {
-                return res.status(403).json({ message: "Користувач не авторизований." })
-            }
-            const decodedData = jwt.verify(token, secret)
             const { id } = req.params
             const activeTest = await ActiveTest.findOne({ _id: id })
-            if (!decodedData) return res.status(403).json({ message: "Користувач не авторизований." })
             if (!activeTest) return res.status(403).json({ message: "Тесту з таким ідентифікатором не знайдено." })
             res.json(activeTest)
         } catch (e) {
@@ -164,17 +127,10 @@ class testsController {
                 const userActiveTest = await ActiveTest.findOne({ _id: item._id })
                 userActiveTestsArr.push(userActiveTest)
             }
-            const token = req.headers.authorization.split(" ")[1]
-            if (!token) {
-                return res.status(403).json({ message: "Користувач не авторизований." })
-            }
-            const decodedData = jwt.verify(token, secret)
-            if (!decodedData) return res.status(403).json({ message: "Користувач не авторизований." })
-            const user = await User.findOne({ _id: decodedData.id })
+            const user = await User.findOne({ _id: req.user.id })
             for (const item of user.activeTests) {
                 await mapper(item)
             }
-            console.log(userActiveTestsArr)
             res.json(userActiveTestsArr)
         } catch (e) {
             console.log(e)
@@ -184,14 +140,8 @@ class testsController {
     async deleteActiveTest(req, res) {
         try {
             const { id } = req.params
-            const token = req.headers.authorization.split(" ")[1]
-            if (!token) {
-                return res.status(403).json({ message: "Користувач не авторизований." })
-            }
-            const decodedData = jwt.verify(token, secret)
-            if (!decodedData) return res.status(403).json({ message: "Користувач не авторизований." })
             await ActiveTest.deleteOne({ _id: id })
-            const user = await User.findOne({ _id: decodedData.id })
+            const user = await User.findOne({ _id: req.user.id })
             await user.updateOne({ $pull: { activeTests: id } })
             await Test.updateOne({ _id: id }, { $set: { isActive: false } })
             res.json("Тестування успішно закінчене!")
@@ -226,13 +176,6 @@ class testsController {
             const getRating = async (item) => {
                 await answerCorrectnessArr.push(!item.includes(false))
             }
-
-            const token = req.headers.authorization.split(" ")[1]
-            if (!token) {
-                return res.status(403).json({ message: "Користувач не авторизований." })
-            }
-            const decodedData = jwt.verify(token, secret)
-            if (!decodedData) return res.status(403).json({ message: "Користувач не авторизований." })
             const activeTest = await ActiveTest.findOne({ _id: activeTestId })
             if (!activeTest) return res.status(404).json({ message: "Час тестування вийшов" })
             const test = await Test.findOne({ _id: activeTest.myTestId })
@@ -250,10 +193,10 @@ class testsController {
                 await getRating(item)
             }
 
-            const user = await User.findOne({ _id: decodedData.id })
+            const user = await User.findOne({ _id: req.user.id })
             const testResult = await new TestResult({
                 answers: answers,
-                user: decodedData.id,
+                user: req.user.id,
                 username: user.name,
                 test: activeTest.myTestId,
                 TestResults: testResultsArr,
@@ -272,14 +215,7 @@ class testsController {
     }
     async getTestResults(req, res) {
         try {
-            const { id } = req.params
-            const token = req.headers.authorization.split(" ")[1]
-            if (!token) {
-                return res.status(403).json({ message: "Користувач не авторизований." })
-            }
-            const decodedData = jwt.verify(token, secret)
-            if (!decodedData) return res.status(403).json({ message: "Користувач не авторизований." })
-            const testResults = await TestResult.find({ creator: decodedData.id })
+            const testResults = await TestResult.find({ creator: req.user.id })
             res.json(testResults)
         } catch (e) {
             console.log(e)
