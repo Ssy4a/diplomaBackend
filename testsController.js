@@ -131,6 +131,20 @@ class testsController {
             for (const item of user.activeTests) {
                 await mapper(item)
             }
+            const mapper2 = async (item) => {
+                const activatedAtDate = await new Date(item.activatedAt)
+                const currentDate = await Date.now()
+                const timeLeft = await ((item.expiresIn - (currentDate - activatedAtDate)) / 1000 | 0)
+                if (timeLeft < 1) {
+                    await ActiveTest.deleteOne({ _id: item._id })
+                    const user = await User.findOne({ _id: req.user.id })
+                    await user.updateOne({ $pull: { activeTests: item._id } })
+                    await Test.updateOne({ _id: item._id }, { $set: { isActive: false } })
+                }
+            }
+            for (const item of userActiveTestsArr) {
+                await mapper2(item)
+            }
             res.json(userActiveTestsArr)
         } catch (e) {
             console.log(e)
